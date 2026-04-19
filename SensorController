@@ -1,0 +1,43 @@
+package com.smartgarden.controller;
+import java.util.Optional;
+import com.smartgarden.model.SensorData;
+import com.smartgarden.service.SensorService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/sensor-data")
+@CrossOrigin(origins = "*")
+@RequiredArgsConstructor
+public class SensorController {
+
+    private final SensorService sensorService;
+
+    // ESP32 gửi dữ liệu lên (POST)
+    @PostMapping
+    public ResponseEntity<SensorData> receive(@RequestBody SensorData data) {
+        SensorData saved = sensorService.save(data);
+        return ResponseEntity.ok(saved);
+    }
+
+    // Dashboard lấy dữ liệu mới nhất (GET) - Dùng polling đơn giản
+    @GetMapping("/latest")
+    public ResponseEntity<SensorData> latest(@RequestParam String deviceId) {
+        Optional<SensorData> opt = sensorService.getLatest(deviceId);
+
+        if (opt.isPresent()) {
+            return ResponseEntity.ok(opt.get()); // 200 + data
+        } else {
+            return ResponseEntity.notFound().build(); // 404
+        }
+    }
+
+    // Lấy lịch sử 20 bản ghi gần nhất
+    @GetMapping("/history")
+    public List<SensorData> history(@RequestParam String deviceId) {
+        return sensorService.getHistory(deviceId);
+    }
+}
