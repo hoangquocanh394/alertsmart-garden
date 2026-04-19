@@ -1,0 +1,22 @@
+package com.smartgarden.model;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+@Entity
+@DiscriminatorValue("TEMPERATURE")
+@Data
+public class TemperatureAlert extends Alert {
+
+    private float temperatureValue;
+
+    @Override
+    public String getAlertType() {
+        return "Temperature";
+    }
+
+    @Override
+    public boolean isCritical() {
+        return true;
+    }
+}
