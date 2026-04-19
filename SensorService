@@ -1,0 +1,38 @@
+package com.smartgarden.service;
+
+import com.smartgarden.model.SensorData;
+import com.smartgarden.repository.SensorDataRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class SensorService {
+
+    private final SensorDataRepository sensorDataRepository;
+    private final IAlertService alertService;   // Để gọi UC6
+
+    @Transactional
+    public SensorData save(SensorData data) {
+        SensorData saved = sensorDataRepository.save(data);
+        
+        // Gọi UC6: Kiểm tra và tạo cảnh báo nếu bất thường
+        alertService.checkAndSave(saved);
+        
+        return saved;
+    }
+
+    // Lấy dữ liệu mới nhất cho Dashboard (UC5)
+    public Optional<SensorData> getLatest(String deviceId) {
+        return sensorDataRepository.findTopByDeviceIdOrderByRecordedAtDesc(deviceId);
+    }
+
+    // Lấy lịch sử (nếu dashboard cần vẽ đồ thị)
+    public List<SensorData> getHistory(String deviceId) {
+        return sensorDataRepository.findTop20ByDeviceIdOrderByRecordedAtDesc(deviceId);
+    }
+}
