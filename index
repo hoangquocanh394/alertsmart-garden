@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Garden – UC5 & UC6</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --g900:#0a2e12; --g800:#174a22; --g700:#1f6130;
+      --g600:#2e7d40; --g500:#3d9e52; --g400:#5bbe6e;
+      --g100:#ccefd4; --g50:#eaf7ed;
+      --red:#c93030;  --red2:#fdf0f0; --redb:rgba(201,48,48,.18);
+      --amb:#c47c00;  --amb2:#fff8ec; --ambb:rgba(196,124,0,.18);
+      --blu:#1d5fa8;  --blu2:#eef4fd;
+      --bg:#f0f4f1; --surf:#fff;
+      --bdr:rgba(0,0,0,.07); --bdr2:rgba(0,0,0,.13);
+      --txt:#152118; --sub:#5e7263;
+      --r:12px; --rs:7px;
+      --mono:'DM Mono',monospace;
+      --sans:'Plus Jakarta Sans',sans-serif;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--sans);background:var(--bg);color:var(--txt);font-size:14px;min-height:100vh}
+
+    /* ─ header ─ */
+    .hd{
+      background:var(--g900);height:54px;padding:0 24px;
+      display:flex;align-items:center;justify-content:space-between;
+      position:sticky;top:0;z-index:200;
+    }
+    .hd-l{display:flex;align-items:center;gap:10px}
+    .hd-ico{
+      width:30px;height:30px;border-radius:8px;background:var(--g600);
+      display:flex;align-items:center;justify-content:center;
+    }
+    .hd-ico svg{width:17px;height:17px;fill:#fff}
+    .hd h1{font-size:14px;font-weight:600;color:#fff;letter-spacing:-.01em}
+    .hd-sub{font-size:10px;font-family:var(--mono);color:var(--g400)}
+    .hd-r{display:flex;align-items:center;gap:8px}
+    .live{display:flex;align-items:center;gap:5px;font-size:10px;font-family:var(--mono);color:var(--g400)}
+    .live::before{content:'';width:6px;height:6px;background:var(--g400);border-radius:50%;animation:blink 2s ease-in-out infinite}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .dev-tag{
+      background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);
+      border-radius:5px;padding:3px 9px;font-size:10px;font-family:var(--mono);color:rgba(255,255,255,.45)
+    }
+
+    /* ─ alert banners ─ */
+    .alert-zone{padding:0 20px}
+    .ab{
+      display:none;margin:10px 0 0;border-radius:var(--rs);
+      padding:11px 14px;font-size:12px;font-weight:600;
+      align-items:center;justify-content:space-between;gap:10px;
+      animation:sld .25s ease;
+    }
+    .ab.show{display:flex}
+    @keyframes sld{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:translateY(0)}}
+    .ab-danger{background:var(--red2);border:1px solid var(--redb);color:var(--red)}
+    .ab-warn  {background:var(--amb2);border:1px solid var(--ambb);color:var(--amb)}
+    .ab-msg{display:flex;align-items:center;gap:7px}
+    .ab-ack{
+      font-size:11px;font-weight:500;background:none;border:1px solid currentColor;
+      color:inherit;border-radius:5px;padding:3px 9px;cursor:pointer;opacity:.65;transition:opacity .15s;white-space:nowrap
+    }
+    .ab-ack:hover{opacity:1}
+
+    /* ─ layout ─ */
+    main{max-width:960px;margin:0 auto;padding:18px 20px 48px;display:grid;gap:14px}
+
+    /* ─ card ─ */
+    .card{background:var(--surf);border-radius:var(--r);border:1px solid var(--bdr);padding:18px 20px}
+    .ct{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--sub);margin-bottom:14px}
+
+    /* ─ sensor tiles ─ */
+    .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+    .tile{
+      background:var(--g50);border:1px solid var(--g100);border-radius:var(--rs);
+      padding:13px 13px 11px;transition:border-color .2s,background .2s
+    }
+    .tile.danger{background:var(--red2);border-color:var(--redb)}
+    .tile.warn  {background:var(--amb2);border-color:var(--ambb)}
+    .tlbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--sub);margin-bottom:5px}
+    .tval{font-family:var(--mono);font-size:26px;font-weight:500;color:var(--g800);line-height:1}
+    .tile.danger .tval{color:var(--red)}
+    .tile.warn   .tval{color:var(--amb)}
+    .tunit{font-size:10px;color:var(--sub);margin-top:3px}
+
+    /* ─ moisture bar ─ */
+    .mbar-sec{margin-top:14px;padding-top:13px;border-top:1px solid var(--g100)}
+    .mbar-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:11px;color:var(--sub)}
+    .mbar-pct{font-family:var(--mono);font-weight:500;color:var(--g700)}
+    .track{height:8px;background:var(--g100);border-radius:20px;overflow:hidden}
+    .fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--g400),var(--g700));transition:width .7s cubic-bezier(.4,0,.2,1)}
+    .thr-lbl{display:flex;justify-content:space-between;margin-top:3px;font-size:9px;color:var(--sub);font-family:var(--mono)}
+
+    /* ─ ts stamp ─ */
+    #lastUpdate{margin-top:10px;font-size:10px;font-family:var(--mono);color:var(--sub)}
+
+    /* ─ chart grid ─ */
+    .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:580px){.cgrid{grid-template-columns:1fr}}
+    .cwrap{position:relative;height:200px}
+
+    /* ─ table ─ */
+    .twrap{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:11px}
+    thead th{
+      background:var(--g50);padding:8px 11px;text-align:left;
+      font-weight:700;font-size:9px;text-transform:uppercase;letter-spacing:.07em;
+      color:var(--sub);border-bottom:1px solid var(--g100);white-space:nowrap
+    }
+    tbody td{padding:7px 11px;border-bottom:1px solid rgba(0,0,0,.04);font-family:var(--mono)}
+    tbody tr:last-child td{border-bottom:none}
+    tbody tr:hover td{background:var(--g50)}
+    .ts-cell{font-size:10px;color:var(--sub)}
+
+    /* ─ badge ─ */
+    .bdg{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+    .bdg-gas {background:var(--red2);color:var(--red)}
+    .bdg-tmp {background:var(--amb2);color:var(--amb)}
+    .bdg-mst {background:var(--blu2);color:var(--blu)}
+    .bdg-ok  {background:var(--g50); color:var(--g700)}
+    .gas-hi  {color:var(--red);font-weight:700}
+
+    /* ─ divider ─ */
+    .divrow{display:flex;align-items:center;gap:10px}
+    .divrow h2{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--sub);white-space:nowrap}
+    .divline{flex:1;height:1px;background:var(--bdr)}
+    .uc-pill{
+      font-size:9px;font-weight:700;letter-spacing:.06em;background:var(--g800);
+      color:#fff;padding:2px 8px;border-radius:20px;
+    }
+    .unread-dot{background:var(--red);color:#fff;font-size:9px;font-weight:700;padding:1px 6px;border-radius:20px}
+
+    /* ─ alert log ─ */
+    .alog{display:grid;gap:7px}
+    .ae{
+      display:flex;align-items:flex-start;gap:10px;padding:11px 13px;
+      border-radius:var(--rs);border:1px solid var(--bdr);background:var(--surf);
+      cursor:pointer;transition:background .15s;animation:fi .25s ease;
+    }
+    .ae:hover{background:var(--g50)}
+    @keyframes fi{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
+    .ae.gas  {border-left:3px solid var(--red)}
+    .ae.temp {border-left:3px solid var(--amb)}
+    .ae.moist{border-left:3px solid var(--blu)}
+    .at{flex:1}
+    .am{font-size:12px;font-weight:500;color:var(--txt);line-height:1.4}
+    .ats{font-size:10px;font-family:var(--mono);color:var(--sub);margin-top:2px}
+    .astat{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px}
+    .astat.new{background:var(--red2);color:var(--red)}
+    .astat.read{background:var(--g50);color:var(--g700)}
+
+    /* ─ empty ─ */
+    .empty{text-align:center;padding:32px;color:var(--sub);font-size:13px}
+    .empty-ico{font-size:26px;margin-bottom:8px}
+
+    /* ─ toast ─ */
+    #toast{
+      position:fixed;bottom:18px;right:18px;background:var(--g900);color:#fff;
+      padding:9px 16px;border-radius:var(--rs);font-size:12px;
+      opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;
+      pointer-events:none;z-index:999;max-width:260px
+    }
+    #toast.show{opacity:1;transform:translateY(0)}
+
+    /* ─ connection status ─ */
+    #connBadge{
+      font-size:9px;font-family:var(--mono);padding:2px 8px;border-radius:20px;
+      background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);
+    }
+    #connBadge.ok{background:rgba(93,190,110,.18);color:var(--g400)}
+    #connBadge.err{background:rgba(201,48,48,.2);color:#f08080}
+  </style>
+</head>
+<body>
+
+<!-- header -->
+<header class="hd">
+  <div class="hd-l">
+    <div class="hd-ico">
+      <svg viewBox="0 0 24 24"><path d="M17 8C8 10 5.9 16.17 3.82 19.77L5.7 21l1-1.5A4.49 4.49 0 008 20c5 0 5-2 10-2 4.42 0 6-1.15 6-3.5C24 11 21 6 17 8z"/></svg>
+    </div>
+    <div>
+      <h1>Smart Garden Dashboard</h1>
+      <div class="hd-sub">UC5 · Dữ liệu thời gian thực &nbsp;|&nbsp; UC6 · Cảnh báo bất thường</div>
+    </div>
+  </div>
+  <div class="hd-r">
+    <span class="live">LIVE</span>
+    <span id="connBadge">–</span>
+    <span class="dev-tag" id="devTag">esp32-garden-01</span>
+  </div>
+</header>
+
+<!-- UC6: alert banners (realtime) -->
+<div class="alert-zone">
+  <div class="ab ab-danger" id="abGas">
+    <span class="ab-msg">🔥 <span id="abGasMsg">Phát hiện khí gas vượt ngưỡng!</span></span>
+    <button class="ab-ack" onclick="ackBanner('gas')">Đã xem</button>
+  </div>
+  <div class="ab ab-danger" id="abTemp">
+    <span class="ab-msg">🌡️ <span id="abTempMsg">Nhiệt độ vượt ngưỡng!</span></span>
+    <button class="ab-ack" onclick="ackBanner('temp')">Đã xem</button>
+  </div>
+  <div class="ab ab-warn" id="abMoist">
+    <span class="ab-msg">💧 <span id="abMoistMsg">Độ ẩm đất bất thường!</span></span>
+    <button class="ab-ack" onclick="ackBanner('moist')">Đã xem</button>
+  </div>
+</div>
+
+<main>
+
+  <!-- ─ UC5 divider ─ -->
+  <div class="divrow">
+    <span class="uc-pill">UC5</span>
+    <h2>Xem dữ liệu thời gian thực</h2>
+    <div class="divline"></div>
+  </div>
+
+  <!-- sensor tiles -->
+  <div class="card">
+    <div class="ct">Cảm biến ESP32 — cập nhật mỗi 5 giây</div>
+    <div class="sg">
+
+      <div class="tile" id="tileMoist">
+        <div class="tlbl">Độ ẩm đất</div>
+        <div class="tval" id="vMoist">--</div>
+        <div class="tunit">%</div>
+      </div>
+
+      <div class="tile" id="tileTemp">
+        <div class="tlbl">Nhiệt độ</div>
+        <div class="tval" id="vTemp">--</div>
+        <div class="tunit">°C</div>
+      </div>
+
+      <div class="tile" id="tileGas">
+        <div class="tlbl">Khí gas (MQ2)</div>
+        <div class="tval" id="vGas">--</div>
+        <div class="tunit">raw ADC</div>
+      </div>
+
+    </div>
+
+    <!-- moisture bar -->
+    <div class="mbar-sec">
+      <div class="mbar-row">
+        <span>Thanh độ ẩm đất</span>
+        <span class="mbar-pct" id="vMoistPct">--%</span>
+      </div>
+      <div class="track"><div class="fill" id="mFill" style="width:0%"></div></div>
+      <div class="thr-lbl">
+        <span>Khô &lt;20%</span><span>|20%</span><span>Bình thường</span><span>80%|</span><span>&gt;80% Ẩm cao</span>
+      </div>
+    </div>
+
+    <div id="lastUpdate">Đang kết nối tới server...</div>
+  </div>
+
+  <!-- charts -->
+  <div class="cgrid">
+    <div class="card" style="grid-column:1/-1">
+      <div class="ct">Độ ẩm đất theo thời gian (20 điểm gần nhất)</div>
+      <div class="cwrap"><canvas id="chartMoist"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Nhiệt độ (°C)</div>
+      <div class="cwrap"><canvas id="chartTemp"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ct">Nồng độ khí gas – raw ADC</div>
+      <div class="cwrap"><canvas id="chartGas"></canvas></div>
+    </div>
+  </div>
+
+  <!-- history table -->
+  <div class="card">
+    <div class="ct">Lịch sử 20 bản ghi gần nhất</div>
+    <div class="twrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Thời gian</th>
+            <th>Đ.ẩm đất</th>
+            <th>Nhiệt độ</th>
+            <th>Gas (raw)</th>
+            <th>Gas alert</th>
+          </tr>
+        </thead>
+        <tbody id="tBody">
+          <tr><td colspan="5" style="color:var(--sub);text-align:center;padding:20px">Đang tải...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ─ UC6 divider ─ -->
+  <div class="divrow">
+    <span class="uc-pill">UC6</span>
+    <h2>Cảnh báo bất thường</h2>
+    <span class="unread-dot" id="unreadDot" style="display:none">0</span>
+    <div class="divline"></div>
+  </div>
+
+  <!-- alert log -->
+  <div class="card">
+    <div class="ct">Nhật ký cảnh báo — click để đánh dấu đã đọc</div>
+    <div class="alog" id="aLog">
+      <div class="empty"><div class="empty-ico">✅</div>Chưa có cảnh báo nào</div>
+    </div>
+  </div>
+
+</main>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+// CONFIG — đổi BASE_URL thành địa chỉ server
+// ════════════════════════════════════════════
+const DEVICE_ID = 'esp32-garden-01';
+const BASE_URL  = '';          // VD: 'http://192.168.1.10:8080'
+const POLL_MS   = 5000;
+
+// Thresholds phải khớp với AlertServiceImpl
+const THR = { MOISTURE_LOW:20, MOISTURE_HIGH:80, TEMP_LOW:5, TEMP_HIGH:40, GAS_RAW:3000 };
+
+// ────────────────────────────────────────────
+// Charts
+// ────────────────────────────────────────────
+function mkLine(id, label, color, yMin, yMax, unit) {
+  return new Chart(document.getElementById(id).getContext('2d'), {
+    type:'line',
+    data:{ labels:[], datasets:[{
+      label, data:[], borderColor:color,
+      backgroundColor: color+'14',
+      borderWidth:2, pointRadius:2.5,
+      pointBackgroundColor:color, fill:true, tension:0.35
+    }]},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label: c => c.parsed.y + unit } } },
+      scales:{
+        x:{ ticks:{ font:{size:9}, maxRotation:30, color:'#5e7263' }, grid:{ color:'rgba(0,0,0,.04)' } },
+        y:{ min:yMin, max:yMax, ticks:{ font:{size:9}, color:'#5e7263', callback: v => v+unit }, grid:{ color:'rgba(0,0,0,.04)' } }
+      }
+    }
+  });
+}
+
+const cMoist = new Chart(document.getElementById('chartMoist').getContext('2d'), {
+  type:'line',
+  data:{ labels:[], datasets:[
+    { label:'Độ ẩm đất (%)', data:[], borderColor:'#2e7d40', backgroundColor:'rgba(46,125,64,.07)', borderWidth:2, pointRadius:2.5, pointBackgroundColor:'#2e7d40', fill:true, tension:0.35 },
+    { label:'Ngưỡng thấp (20%)', data:[], borderColor:'#c93030', borderWidth:1, borderDash:[5,4], pointRadius:0, fill:false },
+    { label:'Ngưỡng cao (80%)', data:[], borderColor:'#1d5fa8', borderWidth:1, borderDash:[5,4], pointRadius:0, fill:false }
+  ]},
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ position:'top', labels:{ font:{size:10}, boxWidth:14 } }, tooltip:{ callbacks:{ label: c => c.dataset.label+': '+c.parsed.y+'%' } } },
+    scales:{
+      x:{ ticks:{ font:{size:9}, maxRotation:30, color:'#5e7263' }, grid:{ color:'rgba(0,0,0,.04)' } },
+      y:{ min:0, max:100, ticks:{ font:{size:9}, color:'#5e7263', callback: v=>v+'%' }, grid:{ color:'rgba(0,0,0,.04)' } }
+    }
+  }
+});
+
+const cTemp = mkLine('chartTemp','Nhiệt độ (°C)','#c47c00', 0, 60, '°C');
+const cGas  = mkLine('chartGas', 'Gas raw ADC',  '#c93030', 0, 5000, '');
+
+// ────────────────────────────────────────────
+// UC5: Fetch latest sensor data
+// ────────────────────────────────────────────
+async function fetchLatest() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/sensor-data/latest?deviceId=${DEVICE_ID}`);
+    if (!res.ok) throw new Error(res.status);
+    const d = await res.json();
+    applyLatest(d);
+    setConn(true);
+  } catch(e) {
+    setConn(false);
+    console.error('fetchLatest', e);
+  }
+}
+
+function applyLatest(d) {
+  // moisture
+  const m = d.moisture ?? 0;
+  document.getElementById('vMoist').textContent = m;
+  document.getElementById('vMoistPct').textContent = m + '%';
+  document.getElementById('mFill').style.width = Math.min(m,100) + '%';
+  const mStatus = m < THR.MOISTURE_LOW ? 'danger' : m > THR.MOISTURE_HIGH ? 'warn' : '';
+  setTile('tileMoist', mStatus);
+
+  // temperature
+  const t = d.temperature;
+  document.getElementById('vTemp').textContent = t != null ? (+t).toFixed(1) : '--';
+  const tStatus = t != null && (t < THR.TEMP_LOW || t > THR.TEMP_HIGH) ? 'danger' : '';
+  setTile('tileTemp', tStatus);
+
+  // gas
+  const g = d.gasRaw;
+  document.getElementById('vGas').textContent = g ?? '--';
+  const gStatus = (d.gasAlert || g > THR.GAS_RAW) ? 'danger' : '';
+  setTile('tileGas', gStatus);
+
+  // banners — trigger dựa trên dữ liệu realtime
+  toggleBanner('abGas',  'abGasMsg',  d.gasAlert || g > THR.GAS_RAW,  `Phát hiện khí gas! Raw ADC = ${g}`);
+  toggleBanner('abTemp', 'abTempMsg', t != null && (t < THR.TEMP_LOW || t > THR.TEMP_HIGH), `Nhiệt độ bất thường: ${(+t).toFixed(1)}°C (ngưỡng: ${THR.TEMP_LOW}–${THR.TEMP_HIGH}°C)`);
+  toggleBanner('abMoist','abMoistMsg',m < THR.MOISTURE_LOW || m > THR.MOISTURE_HIGH, `Độ ẩm đất bất thường: ${m}% (ngưỡng: ${THR.MOISTURE_LOW}–${THR.MOISTURE_HIGH}%)`);
+
+  // timestamp
+  const ts = d.recordedAt ? new Date(d.recordedAt) : new Date();
+  document.getElementById('lastUpdate').textContent = 'Cập nhật lúc: ' + ts.toLocaleTimeString('vi-VN');
+}
+
+function setTile(id, status) {
+  document.getElementById(id).className = 'tile' + (status ? ' '+status : '');
+}
+
+// ────────────────────────────────────────────
+// UC5: Fetch history → table + charts
+// ────────────────────────────────────────────
+async function fetchHistory() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/sensor-data/history?deviceId=${DEVICE_ID}`);
+    if (!res.ok) return;
+    const rows = await res.json();
+    applyHistory(rows);
+  } catch(e) { console.error('fetchHistory', e); }
+}
+
+function applyHistory(rows) {
+  if (!rows || rows.length === 0) return;
+
+  // Oldest → newest for charts
+  const sorted = [...rows].reverse();
+  const labels = sorted.map(r => {
+    const d = new Date(r.recordedAt);
+    return d.toLocaleTimeString('vi-VN', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  });
+
+  // moisture chart
+  cMoist.data.labels                = labels;
+  cMoist.data.datasets[0].data     = sorted.map(r => r.moisture);
+  cMoist.data.datasets[1].data     = sorted.map(() => THR.MOISTURE_LOW);
+  cMoist.data.datasets[2].data     = sorted.map(() => THR.MOISTURE_HIGH);
+  cMoist.update();
+
+  // temp chart
+  cTemp.data.labels                = labels;
+  cTemp.data.datasets[0].data     = sorted.map(r => r.temperature != null ? (+r.temperature).toFixed(1) : null);
+  cTemp.update();
+
+  // gas chart — add threshold line
+  if (cGas.data.datasets.length === 1) {
+    cGas.data.datasets.push({
+      label:'Ngưỡng cảnh báo (3000)', data:[],
+      borderColor:'#f08080', borderWidth:1, borderDash:[5,4], pointRadius:0, fill:false
+    });
+  }
+  cGas.data.labels              = labels;
+  cGas.data.datasets[0].data   = sorted.map(r => r.gasRaw ?? 0);
+  cGas.data.datasets[1].data   = sorted.map(() => THR.GAS_RAW);
+  cGas.update();
+
+  // history table (newest first = rows as-is from backend)
+  document.getElementById('tBody').innerHTML = rows.map(r => {
+    const t = new Date(r.recordedAt).toLocaleString('vi-VN');
+    const gasCell = (r.gasAlert || r.gasRaw > THR.GAS_RAW)
+      ? `<span class="gas-hi">${r.gasRaw} ⚠</span>`
+      : (r.gasRaw ?? '--');
+    const alertBadge = r.gasAlert
+      ? `<span class="bdg bdg-gas">GAS</span>`
+      : `<span class="bdg bdg-ok">OK</span>`;
+    return `<tr>
+      <td class="ts-cell">${t}</td>
+      <td>${r.moisture != null ? r.moisture+'%' : '--'}</td>
+      <td>${r.temperature != null ? (+r.temperature).toFixed(1)+'°C' : '--'}</td>
+      <td>${gasCell}</td>
+      <td>${alertBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ────────────────────────────────────────────
+// UC6: Fetch alerts from backend
+// ────────────────────────────────────────────
+async function fetchAlerts() {
+  try {
+    const res = await fetch(`${BASE_URL}/api/alerts/unread?deviceId=${DEVICE_ID}`);
+    if (!res.ok) return;
+    const alerts = await res.json();
+    renderAlertLog(alerts);
+  } catch(e) { console.error('fetchAlerts', e); }
+}
+
+function renderAlertLog(alerts) {
+  const log = document.getElementById('aLog');
+  const dot = document.getElementById('unreadDot');
+
+  const unread = alerts.filter(a => !a.acknowledged).length;
+  dot.textContent = unread;
+  dot.style.display = unread > 0 ? 'inline-block' : 'none';
+
+  if (!alerts || alerts.length === 0) {
+    log.innerHTML = `<div class="empty"><div class="empty-ico">✅</div>Chưa có cảnh báo nào — hệ thống bình thường</div>`;
+    return;
+  }
+
+  // Determine type from alert_type discriminator
+  function typeClass(a) {
+    const t = (a.alertType || '').toLowerCase();
+    if (t === 'gas')         return 'gas';
+    if (t === 'temperature') return 'temp';
+    if (t === 'moisture')    return 'moist';
+    return 'moist';
+  }
+  function typeBadge(a) {
+    const t = typeClass(a);
+    if (t==='gas')   return '<span class="bdg bdg-gas">GAS</span>';
+    if (t==='temp')  return '<span class="bdg bdg-tmp">NHIỆT ĐỘ</span>';
+    return                  '<span class="bdg bdg-mst">ĐỘ ẨM</span>';
+  }
+  function extra(a) {
+    if (a.gasRaw != null)         return ` · raw=${a.gasRaw}`;
+    if (a.temperatureValue != null) return ` · ${(+a.temperatureValue).toFixed(1)}°C`;
+    if (a.moistureValue != null)  return ` · ${a.moistureValue}%`;
+    return '';
+  }
+
+  log.innerHTML = alerts.map(a => {
+    const tc   = typeClass(a);
+    const ts   = a.createdAt ? new Date(a.createdAt).toLocaleString('vi-VN') : '--';
+    const stat = a.acknowledged
+      ? '<span class="astat read">Đã đọc</span>'
+      : '<span class="astat new">Mới</span>';
+    return `<div class="ae ${tc}" onclick="ackAlert(${a.id}, this)">
+      ${typeBadge(a)}
+      <div class="at">
+        <div class="am">${a.message}${extra(a)}</div>
+        <div class="ats">${ts}</div>
+      </div>
+      ${stat}
+    </div>`;
+  }).join('');
+}
+
+// Acknowledge một alert cụ thể (click vào row)
+async function ackAlert(id, el) {
+  try {
+    await fetch(`${BASE_URL}/api/alerts/${id}/acknowledge`, { method:'PUT' });
+    const statEl = el.querySelector('.astat');
+    if (statEl) { statEl.className='astat read'; statEl.textContent='Đã đọc'; }
+    // Cập nhật lại số unread
+    const unread = document.querySelectorAll('.astat.new').length;
+    const dot = document.getElementById('unreadDot');
+    dot.textContent = unread;
+    dot.style.display = unread > 0 ? 'inline-block' : 'none';
+    showToast('Đã đánh dấu đã đọc');
+  } catch(e) { showToast('Lỗi kết nối!'); }
+}
+
+// ────────────────────────────────────────────
+// Banner helpers
+// ────────────────────────────────────────────
+const bannersHidden = new Set(); // type đã bấm "Đã xem" trong session
+
+function toggleBanner(bannerId, msgId, condition, msg) {
+  const el = document.getElementById(bannerId);
+  if (condition && !bannersHidden.has(bannerId)) {
+    document.getElementById(msgId).textContent = msg;
+    el.classList.add('show');
+  } else if (!condition) {
+    el.classList.remove('show');
+    bannersHidden.delete(bannerId);
+  }
+}
+
+function ackBanner(type) {
+  const map = {gas:'abGas', temp:'abTemp', moist:'abMoist'};
+  const id  = map[type];
+  document.getElementById(id).classList.remove('show');
+  bannersHidden.add(id);
+  showToast('Đã xác nhận cảnh báo');
+  // Acknowledge tất cả unread alert loại đó trên server
+  fetch(`${BASE_URL}/api/alerts/unread?deviceId=${DEVICE_ID}`)
+    .then(r=>r.json())
+    .then(alerts => {
+      const typeMap = {gas:'gas', temp:'temperature', moist:'moisture'};
+      const target  = typeMap[type];
+      alerts.filter(a => (a.alertType||'').toLowerCase() === target && !a.acknowledged)
+            .forEach(a => fetch(`${BASE_URL}/api/alerts/${a.id}/acknowledge`, {method:'PUT'}));
+    }).catch(()=>{});
+}
+
+// ────────────────────────────────────────────
+// Utils
+// ────────────────────────────────────────────
+function setConn(ok) {
+  const b = document.getElementById('connBadge');
+  b.textContent = ok ? 'connected' : 'offline';
+  b.className   = ok ? 'ok' : 'err';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2600);
+}
+
+// ────────────────────────────────────────────
+// Init & polling
+// ────────────────────────────────────────────
+document.getElementById('devTag').textContent = DEVICE_ID;
+
+fetchLatest();
+fetchHistory();
+fetchAlerts();
+
+setInterval(()=>{
+  fetchLatest();
+  fetchHistory();
+  fetchAlerts();
+}, POLL_MS);
+</script>
+</body>
+</html>
