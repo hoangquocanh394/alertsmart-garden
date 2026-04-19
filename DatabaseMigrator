@@ -1,0 +1,66 @@
+package com.smartgarden.config;
+
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Runs lightweight ALTER TABLE migrations on startup.
+ * Safe to run multiple times — skips columns that already exist.
+ * This handles the limitation of Hibernate ddl-auto=update on SQLite.
+ */
+@Component
+@RequiredArgsConstructor
+public class DatabaseMigrator {
+
+    private static final Logger log = LoggerFactory.getLogger(DatabaseMigrator.class);
+
+    private final DataSource dataSource;
+
+    // Map: column_name → ALTER TABLE SQL to add it
+    private static final Map<String, String> MIGRATIONS = new LinkedHashMap<>();
+
+    static {
+        MIGRATIONS.put("gas_raw",     "ALTER TABLE sensor_data ADD COLUMN gas_raw INTEGER DEFAULT 0");
+        MIGRATIONS.put("gas_alert",   "ALTER TABLE sensor_data ADD COLUMN gas_alert BOOLEAN DEFAULT 0");
+        MIGRATIONS.put("temperature", "ALTER TABLE sensor_data ADD COLUMN temperature REAL DEFAULT 0");
+    }
+
+    @PostConstruct
+    public void migrate() {
+        try (Connection conn = dataSource.getConnection();
+             Statement  stmt = conn.createStatement()) {
+
+            // Check which columns already exist in sensor_data
+            ResultSet rs = stmt.executeQuery("PRAGMA table_info(sensor_data)");
+            java.util.Set<String> existing = new java.util.HashSet<>();
+            while (rs.next()) {
+                existing.add(rs.getString("name").toLowerCase());
+            }
+            rs.close();
+
+            // Add missing columns
+            for (Map.Entry<String, String> entry : MIGRATIONS.entrySet()) {
+                String col = entry.getKey();
+                if (!existing.contains(col)) {
+                    stmt.execute(entry.getValue());
+                    log.info("[Migration] Added column '{}' to sensor_data", col);
+                }
+            }
+
+            log.info("[Migration] sensor_data schema is up to date.");
+
+        } catch (Exception e) {
+            log.error("[Migration] Failed: {}", e.getMessage());
+        }
+    }
+}
