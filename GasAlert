@@ -1,0 +1,21 @@
+package com.smartgarden.model;
+import jakarta.persistence.*;
+import lombok.Data;
+
+@Entity
+@DiscriminatorValue("GAS")
+@Data
+public class GasAlert extends Alert {
+
+    private int gasRaw;
+
+    @Override
+    public String getAlertType() {
+        return "Gas";
+    }
+
+    @Override
+    public boolean isCritical() {
+        return true;
+    }
+}
