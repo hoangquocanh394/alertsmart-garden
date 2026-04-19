@@ -1,0 +1,97 @@
+package com.smartgarden.service;
+
+import com.smartgarden.model.*;
+import com.smartgarden.repository.AlertRepository;
+import com.smartgarden.repository.SensorDataRepository;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class AlertServiceImpl implements IAlertService {
+
+    private static final Logger log = LoggerFactory.getLogger(AlertServiceImpl.class);
+
+    private final AlertRepository alertRepository;
+    private final SensorDataRepository sensorDataRepository;
+
+    // Threshold UC6 (dễ chỉnh)
+    private static final int MOISTURE_LOW = 20;
+    private static final int MOISTURE_HIGH = 80;
+    private static final float TEMP_LOW = 5.0f;
+    private static final float TEMP_HIGH = 40.0f;
+    private static final int GAS_THRESHOLD = 3000; // ADC raw value
+
+    // UC7: Mất kết nối sau bao lâu (ESP32 gửi mỗi 10s → 2 phút là an toàn)
+    private static final long DISCONNECTION_THRESHOLD_MINUTES = 2;
+
+    @Override
+    public void checkAndSave(SensorData data) {
+        // UC6 - Cảnh báo độ ẩm, nhiệt độ, gas bất thường
+        if (data.getMoisture() < MOISTURE_LOW || data.getMoisture() > MOISTURE_HIGH) {
+            MoistureAlert alert = new MoistureAlert();
+            alert.setDeviceId(data.getDeviceId());
+            alert.setMoistureValue(data.getMoisture());
+            alert.setMessage("Độ ẩm bất thường: " + data.getMoisture() + "%");
+            alertRepository.save(alert);
+            log.info("[UC6 Alert] Moisture alert created for {}", data.getDeviceId());
+        }
+
+        if (data.getTemperature() < TEMP_LOW || data.getTemperature() > TEMP_HIGH) {
+            TemperatureAlert alert = new TemperatureAlert();
+            alert.setDeviceId(data.getDeviceId());
+            alert.setTemperatureValue(data.getTemperature());
+            alert.setMessage("Nhiệt độ bất thường: " + data.getTemperature() + "°C");
+            alertRepository.save(alert);
+            log.info("[UC6 Alert] Temperature alert created for {}", data.getDeviceId());
+        }
+
+        boolean hasGasAlert = false;
+
+        if (data.isGasAlert()) {
+            hasGasAlert = true;                    // Ưu tiên flag từ ESP32
+        } 
+        else if (data.getGasRaw() > 3500) {        // Ngưỡng raw dự phòng
+            hasGasAlert = true;
+        }
+        if (hasGasAlert) {
+            GasAlert alert = new GasAlert();
+            alert.setDeviceId(data.getDeviceId());
+            alert.setGasRaw(data.getGasRaw());
+            alert.setMessage("Gas bất thường! Raw: " + data.getGasRaw() + " (alert flag: " + data.isGasAlert() + ")");
+            alertRepository.save(alert);
+            log.info("[UC6 Alert] Gas alert created for {}", data.getDeviceId());
+        }
+    }
+
+    @Override
+    public List<Alert> getAll(String deviceId) {
+        return alertRepository.findByDeviceIdOrderByCreatedAtDesc(deviceId);
+    }
+
+    @Override
+    public List<Alert> getUnacknowledged(String deviceId) {
+        return alertRepository.findByDeviceIdAndAcknowledgedFalseOrderByCreatedAtDesc(deviceId);
+    }
+
+    @Override
+    public void acknowledge(Long id) {
+        alertRepository.findById(id).ifPresent(alert -> {
+            alert.setAcknowledged(true);
+            alertRepository.save(alert);
+            log.info("[Alert] Acknowledged {}", id);
+        });
+    }
+
+    @Override
+    public void delete(Long id) {
+        alertRepository.deleteById(id);
+        log.info("[Alert] Deleted ID {}", id);
+    }
+}
