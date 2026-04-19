@@ -1,0 +1,14 @@
+package com.smartgarden.service;
+
+import com.smartgarden.model.Alert;
+import com.smartgarden.model.SensorData;
+
+import java.util.List;
+
+public interface IAlertService {
+    void checkAndSave(SensorData data);           // UC6
+    List<Alert> getAll(String deviceId);
+    List<Alert> getUnacknowledged(String deviceId); // getUnread trong diagram
+    void acknowledge(Long id);
+    void delete(Long id);
+}
