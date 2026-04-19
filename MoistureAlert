@@ -1,0 +1,22 @@
+package com.smartgarden.model;
+
+import jakarta.persistence.*;
+import lombok.Data;
+
+@Entity
+@DiscriminatorValue("MOISTURE")
+@Data
+public class MoistureAlert extends Alert {
+
+    private int moistureValue;
+
+    @Override
+    public String getAlertType() {
+        return "Moisture";
+    }
+
+    @Override
+    public boolean isCritical() {
+        return true;
+    }
+}
