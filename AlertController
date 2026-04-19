@@ -1,0 +1,53 @@
+package com.smartgarden.controller;
+
+import com.smartgarden.model.Alert;
+import com.smartgarden.service.IAlertService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/alerts")
+@CrossOrigin(origins = "*")
+@RequiredArgsConstructor
+public class AlertController {
+
+    private final IAlertService alertService;
+
+    /**
+     * Lấy tất cả cảnh báo của một thiết bị (UC6)
+     */
+    @GetMapping
+    public List<Alert> getAll(@RequestParam String deviceId) {
+        return alertService.getAll(deviceId);
+    }
+
+    /**
+     * Lấy các cảnh báo chưa đọc (unacknowledged)
+     * Dashboard thường dùng API này để hiển thị thông báo mới
+     */
+    @GetMapping("/unread")
+    public List<Alert> getUnread(@RequestParam String deviceId) {
+        return alertService.getUnacknowledged(deviceId);
+    }
+
+    /**
+     * Đánh dấu đã đọc một cảnh báo
+     */
+    @PutMapping("/{id}/acknowledge")
+    public ResponseEntity<Void> acknowledge(@PathVariable Long id) {
+        alertService.acknowledge(id);
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Xóa một cảnh báo
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        alertService.delete(id);
+        return ResponseEntity.ok().build();
+    }
+}
